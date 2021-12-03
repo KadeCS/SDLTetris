@@ -30,3 +30,11 @@
 *.exe
 *.out
 *.app
+
+vs/
+ConsoleApplication1/lib/
+ConsoleApplication1/include/
+ConsoleApplication1/Debug/
+ConsoleApplication1/Release/
+Debug/
+Release/

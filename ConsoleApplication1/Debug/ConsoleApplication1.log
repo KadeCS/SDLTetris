@@ -1,0 +1,10 @@
+﻿  ConsoleApplication1.cpp
+C:\Users\millk290\source\repos\ConsoleApplication1\ConsoleApplication1\Tetromino.h(19,20): warning C4244:  '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\millk290\source\repos\ConsoleApplication1\ConsoleApplication1\Tetromino.h(27,21): warning C4244:  '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\millk290\source\repos\ConsoleApplication1\ConsoleApplication1\Tetromino.h(44,22): warning C4018:  '<': signed/unsigned mismatch
+C:\Users\millk290\source\repos\ConsoleApplication1\ConsoleApplication1\Tetromino.h(56,12): warning C4244:  '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\millk290\source\repos\ConsoleApplication1\ConsoleApplication1\Tetromino.h(57,12): warning C4244:  '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\millk290\source\repos\ConsoleApplication1\ConsoleApplication1\ConsoleApplication1.cpp(47,1): warning C4007:  'WinMain': must be '__stdcall'
+C:\Users\millk290\source\repos\ConsoleApplication1\ConsoleApplication1\ConsoleApplication1.cpp(86,21): warning C4244:  '=': conversion from 'int' to 'float', possible loss of data
+C:\Users\millk290\source\repos\ConsoleApplication1\ConsoleApplication1\ConsoleApplication1.cpp(110,21): warning C4018:  '<': signed/unsigned mismatch
+  ConsoleApplication1.vcxproj -> C:\Users\millk290\source\repos\ConsoleApplication1\Debug\ConsoleApplication1.exe
