@@ -5,13 +5,16 @@
 struct TetrominoPiece {
 	SDL_FRect rect;
 	Globals::color color;
+	SDL_FRect og;
 };
 
 class Tetromino {
 public:
-	std::vector<TetrominoPiece> pieces[2];
+	std::vector<TetrominoPiece> pieces;
 	SDL_FRect rect;
+	int rotateIndex;
 	int constructIndex; // basically the type of the tetromino in the "tetrominos" int[] in ConsoleApplication1.cpp
+	SDL_FRect centerPoint;
 
 	void addPiece(int lane, int col)
 	{
@@ -27,35 +30,110 @@ public:
 		piece.rect.y = 16 * lane;
 		piece.rect.w = 16;
 		piece.rect.h = 16;
-		pieces[lane].push_back(piece);
+
+		if (piece.rect.x > rect.w)
+			rect.w = piece.rect.x;
+		if (piece.rect.y > rect.h)
+			rect.h = piece.rect.y;
+
+		SDL_FRect copyRect = piece.rect;
+
+		piece.og = copyRect;
+
+		pieces.push_back(piece);
+
+	}
+
+	void movePiece(TetrominoPiece& piece, int directionX, int directionY)
+	{
+		SDL_FRect copyOfOriginal = piece.og;
+		piece.rect.x = copyOfOriginal.x + (directionX * 16);
+		piece.rect.y = copyOfOriginal.y + (directionY * 16);
+	}
+
+	void rotate()
+	{
+		rotateIndex = (rotateIndex + 1) % 4;
+		switch (constructIndex)
+		{
+		case 0:
+			switch (rotateIndex)
+			{
+			case 0:
+				movePiece(pieces[0], 2, -3);
+				movePiece(pieces[1], 1, -2);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], -1, -1);
+				break;
+			case 1:
+				movePiece(pieces[0], 0, 0);
+				movePiece(pieces[1], 0, 0);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], 0, 0);
+				break;
+			case 2:
+				movePiece(pieces[0], 1, -3);
+				movePiece(pieces[1], 0, -2);
+				movePiece(pieces[2], -1, -1);
+				movePiece(pieces[3], -2, 0);
+				break;
+			case 3:
+				movePiece(pieces[0], 0, -1);
+				movePiece(pieces[1], 0, -1);
+				movePiece(pieces[2], 0, -1);
+				movePiece(pieces[3], 0, -1);
+				break;
+			}
+			break;
+		case 1:
+			switch (rotateIndex)
+			{
+			case 0:
+				movePiece(pieces[0], 0, 0);
+				movePiece(pieces[1], 0, 0);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], 0, 0);
+				break;
+			case 1:
+				movePiece(pieces[0], 2, 0);
+				movePiece(pieces[1], 1, -1);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], -1, 1);
+				break;
+			case 2:
+				movePiece(pieces[0], 2, 2);
+				movePiece(pieces[1], 2, 0);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], -2, 0);
+				break;
+			case 3:
+				movePiece(pieces[0], 0, 2);
+				movePiece(pieces[1], 1, 1);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], -1, -1);
+				break;
+			}
+			break;
+		}
 	}
 
 	void draw()
 	{
-		// basically draw all of the pieces, then convert them to a texture, and then draw that texture with the correct angles and stuff
-		int height = pieces[1].size() != 0 ? 32 : 16; // if the bottom lane has any pieces, make the height 32.
-		int width = pieces[1].size() > pieces[0].size() ? 16 + (16 * pieces[1].size()) : 16 + (16 * pieces[0].size()); // the the bottom lane is longer than the top, take its width instead of the top one.
+		if (pieces.size() == 0)
+			return;
 
-		SDL_Texture* t = SDL_CreateTexture(Globals::renderer, SDL_PIXELFORMAT_RGBA8888, SDL_TEXTUREACCESS_TARGET, width, height);
-		
-		SDL_SetRenderTarget(Globals::renderer, t);
-		for (int l = 0; l < 2; l++)
+		for (int i = 0; i < pieces.size(); i++)
 		{
-			for (int i = 0; i < pieces[l].size(); i++)
-			{
-				std::vector<TetrominoPiece>& lane = pieces[l];
-				SDL_SetRenderDrawColor(Globals::renderer, lane[i].color.r, lane[i].color.g, lane[i].color.b, lane[i].color.a);
-				SDL_RenderFillRectF(Globals::renderer, &lane[i].rect);
-				SDL_SetRenderDrawColor(Globals::renderer, 0, 0, 0, lane[i].color.a);
-				SDL_RenderDrawRectF(Globals::renderer, &lane[i].rect);
-			}
+			std::vector<TetrominoPiece>& lane = pieces;
+			SDL_SetRenderDrawColor(Globals::renderer, lane[i].color.r, lane[i].color.g, lane[i].color.b, lane[i].color.a);
+			SDL_FRect newRect;
+			newRect.x = rect.x + lane[i].rect.x;
+			newRect.y = rect.y + lane[i].rect.y;
+			newRect.w = lane[i].rect.w;
+			newRect.h = lane[i].rect.h;
+			SDL_RenderFillRectF(Globals::renderer, &newRect);
+			SDL_SetRenderDrawColor(Globals::renderer, 0, 0, 0, lane[i].color.a);
+			SDL_RenderDrawRectF(Globals::renderer, &newRect);
 		}
-		SDL_SetRenderTarget(Globals::renderer, NULL);
-
-		// now get the actual rect of the texture, and draw the texture to there.
-		rect.h = height;
-		rect.w = width;
-
-		SDL_RenderCopyF(Globals::renderer, t, NULL, &rect);
 	}
 };
