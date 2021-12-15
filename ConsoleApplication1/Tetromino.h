@@ -16,6 +16,8 @@ public:
 	int constructIndex; // basically the type of the tetromino in the "tetrominos" int[] in ConsoleApplication1.cpp
 	SDL_FRect centerPoint;
 
+	float storeY = 0;
+
 	void addPiece(int lane, int col)
 	{
 		TetrominoPiece piece;
@@ -114,7 +116,149 @@ public:
 				break;
 			}
 			break;
+		case 2:
+			switch (rotateIndex)
+			{
+			case 0:
+				movePiece(pieces[0], 0, 0);
+				movePiece(pieces[1], 0, 0);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], 0, 0);
+				break;
+			case 1:
+				movePiece(pieces[0], 1, -1);
+				movePiece(pieces[1], 0, 0);
+				movePiece(pieces[2], -1, 2);
+				movePiece(pieces[3], 0, 1);
+				break;
+			case 2:
+				movePiece(pieces[0], 2, 0);
+				movePiece(pieces[1], 0, 0);
+				movePiece(pieces[2], -2, 2);
+				movePiece(pieces[3], -2, 0);
+				break;
+			case 3:
+				movePiece(pieces[0], 1, 1);
+				movePiece(pieces[1], 0, 0);
+				movePiece(pieces[2], -2, 0);
+				movePiece(pieces[3], -1, -1);
+				break;
+			}
+			break;
+		case 4:
+			switch (rotateIndex)
+			{
+			case 0:
+				movePiece(pieces[0], 0, 0);
+				movePiece(pieces[1], 0, 0);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], 0, 0);
+				break;
+			case 1:
+				movePiece(pieces[0], 2, 0);
+				movePiece(pieces[1], 0, 0);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], 0, 2);
+				break;
+			case 2:
+				movePiece(pieces[0], 1, 1);
+				movePiece(pieces[1], 1, 1);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], -2, 2);
+				break;
+			case 3:
+				movePiece(pieces[0], 1, 1);
+				movePiece(pieces[1], -1, 0);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], -2, 1);
+				break;
+			}
+			break;
+		case 5:
+			switch (rotateIndex)
+			{
+			case 0:
+				movePiece(pieces[0], 0, 0);
+				movePiece(pieces[1], 0, 0);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], 0, 0);
+				break;
+			case 1:
+				movePiece(pieces[0], 1, 1);
+				movePiece(pieces[1], 0, 0);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], 0, 0);
+				break;
+			case 2:
+				movePiece(pieces[0], 1, 1);
+				movePiece(pieces[1], -1, 1);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], 0, 0);
+				break;
+			case 3:
+				movePiece(pieces[0], 1, 1);
+				movePiece(pieces[1], 0, 0);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], -2, 0);
+				break;
+			}
+			break;
+		case 6:
+			switch (rotateIndex)
+			{
+			case 0:
+				movePiece(pieces[0], 0, 0);
+				movePiece(pieces[1], 0, 0);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], 0, 0);
+				break;
+			case 1:
+				movePiece(pieces[0], 2, 0);
+				movePiece(pieces[1], 0, 2);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], 0, 0);
+				break;
+			case 2:
+				movePiece(pieces[0], 1, 2);
+				movePiece(pieces[1], -1, 1);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], 0, 1);
+				break;
+			case 3:
+				movePiece(pieces[0], 1, 0);
+				movePiece(pieces[1], -1, 1);
+				movePiece(pieces[2], 0, 0);
+				movePiece(pieces[3], -2, 1);
+				break;
+			}
+			break;
 		}
+
+		rect.w = 0;
+		rect.h = 0;
+
+		for (TetrominoPiece& p : pieces)
+		{
+			if (p.rect.x > rect.w)
+				rect.w = p.rect.x;
+			if (p.rect.y > rect.h)
+				rect.h = p.rect.y;
+		}
+
+		if (rect.x + pieces[0].rect.x > rect.x + 16)
+			rect.x += pieces[0].rect.x - pieces[0].rect.x;
+	}
+
+	bool checkCol(TetrominoPiece& piece)
+	{
+
+		for (TetrominoPiece oPiece : pieces)
+		{
+			if (piece.rect.x == oPiece.rect.x)
+				return true;
+		}
+		
+		return false;
 	}
 
 	void draw()
@@ -132,7 +276,29 @@ public:
 			newRect.w = lane[i].rect.w;
 			newRect.h = lane[i].rect.h;
 			SDL_RenderFillRectF(Globals::renderer, &newRect);
-			SDL_SetRenderDrawColor(Globals::renderer, 0, 0, 0, lane[i].color.a);
+			SDL_SetRenderDrawColor(Globals::renderer, 0, 0, 0, 255);
+			SDL_RenderDrawRectF(Globals::renderer, &newRect);
+		}
+	}
+
+	void drawGhost()
+	{
+		if (pieces.size() == 0)
+			return;
+
+		// do stuff here later
+
+		for (int i = 0; i < pieces.size(); i++)
+		{
+			std::vector<TetrominoPiece>& lane = pieces;
+			SDL_SetRenderDrawColor(Globals::renderer, lane[i].color.r, lane[i].color.g, lane[i].color.b, 64);
+			SDL_FRect newRect;
+			newRect.x = rect.x + lane[i].rect.x;
+			newRect.y = rect.y + lane[i].rect.y;
+			newRect.w = lane[i].rect.w;
+			newRect.h = lane[i].rect.h;
+			SDL_RenderFillRectF(Globals::renderer, &newRect);
+			SDL_SetRenderDrawColor(Globals::renderer, 0, 0, 0, 255);
 			SDL_RenderDrawRectF(Globals::renderer, &newRect);
 		}
 	}

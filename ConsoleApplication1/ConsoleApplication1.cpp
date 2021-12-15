@@ -38,7 +38,31 @@ const int tetrominos[7][8] = { {
 	}
 };
 
-std::vector<Tetromino*> avalableTetrominos;
+// [level][0] = speed for that level
+
+const float cellFrames[16][1] = { // gotten from https://gamedev.stackexchange.com/questions/159835/understanding-tetris-speed-curve
+	{0.01667},
+	{0.021017},
+	{0.026977},
+	{0.035256},
+	{0.04693},
+	{0.06361},
+	{0.0879},
+	{0.1236},
+	{0.1775},
+	{0.2598},
+	{0.388},
+	{0.59},
+	{0.92},
+	{1.46},
+	{2.36},
+};
+
+float deltaTime = 0;
+
+std::vector<TetrominoPiece> groundedPieces[21];
+
+Tetromino* faillingTetr;
 
 bool isOffseting = false;
 
@@ -48,48 +72,32 @@ int selectedPieceIndex = 0;
 std::vector<int> offsetX;
 std::vector<int> offsetY;
 
-void setTerio() {
-	avalableTetrominos.clear();
-	for (int i = 0; i < 8; i++)
+void createTetr(int constructId) {
+	Tetromino* tetr = new Tetromino();
+
+	tetr->constructIndex = constructId;
+
+	int colIndex = 0;
+
+	for (int ii = 0; ii < 4; ii++)
 	{
-		Tetromino* tetr = new Tetromino();
+		int piece = tetrominos[constructId][ii];
+		int bottomPiece = tetrominos[constructId][ii + 4];
+		if (piece != 0)
+			tetr->addPiece(0, colIndex);
+		if (bottomPiece != 0)
+			tetr->addPiece(1, colIndex);
 
-		tetr->constructIndex = i;
-
-		int colIndex = 0;
-
-		for (int ii = 0; ii < 4; ii++)
-		{
-			int piece = tetrominos[i][ii];
-			int bottomPiece = tetrominos[i][ii + 4];
-			if (piece != 0)
-				tetr->addPiece(0, colIndex);
-			if (bottomPiece != 0)
-				tetr->addPiece(1, colIndex);
-
-			if (piece != 0 || bottomPiece != 0)
-				colIndex++;
-
-		}
-		tetr->rect.x = 24 + (76 * i);
-		tetr->rect.y = 400;
-		avalableTetrominos.push_back(tetr);
+		if (piece != 0 || bottomPiece != 0)
+			colIndex++;
 
 	}
+	tetr->rect.x = (800 / 2) - 24;
+	tetr->rect.y = 192;
+	tetr->storeY = 192;
+	faillingTetr = tetr;
 }
 
-void switchOffset() {
-	offsetX.clear();
-	offsetY.clear();
-
-	selectedPieceIndex = 0;
-
-	for (int i = 0; i < avalableTetrominos[index]->pieces.size(); i++)
-	{
-		offsetX.push_back(0);
-		offsetY.push_back(0);
-	}
-}
 
 void toClipboard(const std::string& s) {
 	OpenClipboard(0);
@@ -105,6 +113,17 @@ void toClipboard(const std::string& s) {
 	CloseClipboard();
 	GlobalFree(hg);
 }
+
+float currentTime = 0;
+float simulatedTime = 0;
+
+int level;
+
+float align(float value, float size)
+{
+	return value - std::abs(std::fmod(value, size));
+}
+
 
 int WinMain(HINSTANCE hInstance,
 	HINSTANCE hPrevInstance,
@@ -128,12 +147,11 @@ int WinMain(HINSTANCE hInstance,
 
 	bool run = true;
 
-	setTerio();
-
-	switchOffset();
-
+	createTetr(2);
+	
 	while (run)
 	{
+		const Uint32 startTime = SDL_GetTicks();
 		SDL_RenderClear(renderer);
 		SDL_Event event;
 		while (SDL_PollEvent(&event) > 0)
@@ -147,82 +165,116 @@ int WinMain(HINSTANCE hInstance,
 				switch (event.key.keysym.sym)
 				{
 				case SDLK_UP:
-					if (!isOffseting)
-					{
-						for (int i = 0; i < avalableTetrominos.size(); i++)
-						{
-							Tetromino* piece = avalableTetrominos[i];
-							piece->rotate();
-						}
-					}
-					else
-					{
-						offsetY[selectedPieceIndex]--;
-					}
-					break;
-				case SDLK_DOWN:
-					if (isOffseting)
-						offsetY[selectedPieceIndex]++;
+					if (faillingTetr)
+						faillingTetr->rotate();
 					break;
 				case SDLK_LEFT:
-					if (isOffseting)
-						offsetX[selectedPieceIndex]--;
+					if (faillingTetr)
+					{
+						faillingTetr->rect.x -= 16;
+						if (faillingTetr->rect.x < ((800 / 2) - 80))
+							faillingTetr->rect.x = ((800 / 2) - 80);
+					}
 					break;
 				case SDLK_RIGHT:
-					if (isOffseting)
-						offsetX[selectedPieceIndex]++;
-					break;
-				case SDLK_r:
-					switchOffset();
-					for (int i = 0; i < avalableTetrominos[index]->pieces.size(); i++)
+					if (faillingTetr)
 					{
-						avalableTetrominos[index]->pieces[i].rect.x = avalableTetrominos[index]->pieces[i].og.x;
-						avalableTetrominos[index]->pieces[i].rect.y = avalableTetrominos[index]->pieces[i].og.y;
+						faillingTetr->rect.x += 16;
+						if (faillingTetr->rect.x + faillingTetr->rect.w >= ((800 / 2) - 80) + 160)
+							faillingTetr->rect.x -= 16;
 					}
-					break;
-				case SDLK_l:
-					selectedPieceIndex++;
-					if (selectedPieceIndex > avalableTetrominos[index]->pieces.size() - 1)
-						selectedPieceIndex = 0;
-					break;
-				case SDLK_s:
-					for (int i = 0; i < offsetX.size(); i++)
-					{
-						clip += "movePiece(pieces[" + std::to_string(i) + "], " + std::to_string(offsetX[i]) + "," + std::to_string(offsetY[i]) + ");\n";
-					}
-					toClipboard(clip);
-					break;
-				case SDLK_p:
-					switchOffset();
-					index++;
-
-					if (index >= avalableTetrominos.size() - 1)
-						index = 0;
-					break;
 				}
 				break;
 			}
 
 		}
 
+		currentTime += deltaTime;
 
-		// test render
-		avalableTetrominos[index]->draw();
 
-		if (isOffseting)
+		if (faillingTetr)
 		{
+			while (currentTime > simulatedTime)
+			{
+				faillingTetr->storeY++;
+				faillingTetr->rect.y = align(faillingTetr->storeY, 16);
 
-			avalableTetrominos[index]->movePiece(avalableTetrominos[index]->pieces[selectedPieceIndex], offsetX[selectedPieceIndex], offsetY[selectedPieceIndex]);
+				simulatedTime += 1 / cellFrames[level][0];
+			}
 
+			// collision
 
-			SDL_SetRenderDrawColor(renderer, 255, 0, 0, 255);
+			bool die = false;
 
-			SDL_FRect box = avalableTetrominos[index]->pieces[selectedPieceIndex].rect;
+			for (int i = 0; i < 21; i++)
+			{
+				for (TetrominoPiece& piece : groundedPieces[i])
+				{
+					if (faillingTetr->checkCol(piece))
+					{
+						for (TetrominoPiece piece : faillingTetr->pieces)
+						{
+							piece.rect.x = faillingTetr->rect.x + piece.rect.x;
+							piece.rect.y = faillingTetr->rect.y + piece.rect.y;
 
-			box.x += avalableTetrominos[index]->rect.x;
-			box.y += avalableTetrominos[index]->rect.y;
+							int lane = piece.rect.y - 192;
+							for (int i = 0; i < 21; i++)
+							{
+								int laneMay = i * 16;
+								if (lane == laneMay)
+									groundedPieces[i].push_back(piece);
+							}
+						}
+						die = true;
+					}
+				}
+			}
 
-			SDL_RenderFillRectF(renderer, &box);
+			if (faillingTetr->rect.y + faillingTetr->rect.h >= 480)
+			{
+				faillingTetr->rect.y = 480;
+				for (TetrominoPiece piece : faillingTetr->pieces)
+				{
+					piece.rect.x = faillingTetr->rect.x + piece.rect.x;
+					piece.rect.y = faillingTetr->rect.y + piece.rect.y;
+
+					int lane = piece.rect.y - 192;
+					for (int i = 0; i < 21; i++)
+					{
+						int laneMay = i * 16;
+						if (lane == laneMay)
+							groundedPieces[i].push_back(piece);
+					}
+				}
+				die = true;
+
+			}
+
+			if (die)
+			{
+				delete faillingTetr;
+				faillingTetr = nullptr;
+			}
+
+			if (faillingTetr)
+				faillingTetr->draw();
+
+		}
+
+		for (int i = 0; i < 21; i++)
+		{
+			for (TetrominoPiece& piece : groundedPieces[i])
+			{
+				SDL_SetRenderDrawColor(Globals::renderer, piece.color.r, piece.color.g, piece.color.b, piece.color.a);
+				SDL_FRect newRect;
+				newRect.x = piece.rect.x;
+				newRect.y = piece.rect.y;
+				newRect.w = piece.rect.w;
+				newRect.h = piece.rect.h;
+				SDL_RenderFillRectF(Globals::renderer, &newRect);
+				SDL_SetRenderDrawColor(Globals::renderer, 0, 0, 0, 255);
+				SDL_RenderDrawRectF(Globals::renderer, &newRect);
+			}
 		}
 		// render box
 
@@ -230,20 +282,22 @@ int WinMain(HINSTANCE hInstance,
 
 		SDL_FPoint p[4];
 
-		p[0].x = 300;
-		p[0].y = 100;
-		p[1].x = 300;
-		p[1].y = 450;
-		p[2].x = 500;
-		p[2].y = 450;
-		p[3].x = 500;
-		p[3].y = 100;
+		p[0].x = ((800 / 2) - 80);
+		p[0].y = 192;
+		p[1].x = ((800 / 2) - 80);
+		p[1].y = 512;
+		p[2].x = ((800 / 2) - 80) + 160;
+		p[2].y = 512;
+		p[3].x = ((800 / 2) - 80) + 160;
+		p[3].y = 192;
 
 		SDL_RenderDrawLinesF(renderer, p, 4);
 
 
 		SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0);
 		SDL_RenderPresent(renderer);
+
+		deltaTime = SDL_GetTicks() - startTime;
 
 	}
 
