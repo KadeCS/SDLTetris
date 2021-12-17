@@ -33,11 +33,6 @@ public:
 		piece.rect.w = 16;
 		piece.rect.h = 16;
 
-		if (piece.rect.x > rect.w)
-			rect.w = piece.rect.x;
-		if (piece.rect.y > rect.h)
-			rect.h = piece.rect.y;
-
 		SDL_FRect copyRect = piece.rect;
 
 		piece.og = copyRect;
@@ -234,19 +229,6 @@ public:
 			break;
 		}
 
-		rect.w = 0;
-		rect.h = 0;
-
-		for (TetrominoPiece& p : pieces)
-		{
-			if (p.rect.x > rect.w)
-				rect.w = p.rect.x;
-			if (p.rect.y > rect.h)
-				rect.h = p.rect.y;
-		}
-
-		if (rect.x + pieces[0].rect.x > rect.x + 16)
-			rect.x += pieces[0].rect.x - pieces[0].rect.x;
 	}
 
 	bool checkCol(TetrominoPiece& piece)
@@ -254,7 +236,7 @@ public:
 
 		for (TetrominoPiece oPiece : pieces)
 		{
-			if (piece.rect.x == oPiece.rect.x)
+			if (rect.x + piece.rect.x == oPiece.rect.x && rect.y + piece.rect.y == oPiece.rect.y)
 				return true;
 		}
 		
@@ -265,6 +247,7 @@ public:
 	{
 		if (pieces.size() == 0)
 			return;
+
 
 		for (int i = 0; i < pieces.size(); i++)
 		{
@@ -279,6 +262,10 @@ public:
 			SDL_SetRenderDrawColor(Globals::renderer, 0, 0, 0, 255);
 			SDL_RenderDrawRectF(Globals::renderer, &newRect);
 		}
+
+		SDL_SetRenderDrawColor(Globals::renderer, 255, 0, 0, 255);
+		SDL_RenderDrawRectF(Globals::renderer, &rect);
+
 	}
 
 	void drawGhost()

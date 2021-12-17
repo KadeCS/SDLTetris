@@ -1,5 +1,6 @@
 #include "Includes.h"
 #include "Tetromino.h"
+#include <ctime>
 #include "Globals.h"
 #pragma comment(lib,"x64\\SDL2.lib")
 #pragma comment(lib,"x64\\SDL2_ttf.lib")
@@ -38,6 +39,8 @@ const int tetrominos[7][8] = { {
 	}
 };
 
+
+
 // [level][0] = speed for that level
 
 const float cellFrames[16][1] = { // gotten from https://gamedev.stackexchange.com/questions/159835/understanding-tetris-speed-curve
@@ -72,12 +75,18 @@ int selectedPieceIndex = 0;
 std::vector<int> offsetX;
 std::vector<int> offsetY;
 
+float boardX = ((864 / 2) - 80);
+float bottomBoard = 512;
+
 void createTetr(int constructId) {
 	Tetromino* tetr = new Tetromino();
 
 	tetr->constructIndex = constructId;
+	tetr->rect.w = 16;
+	tetr->rect.h = 16;
 
 	int colIndex = 0;
+	int lanes = 1;
 
 	for (int ii = 0; ii < 4; ii++)
 	{
@@ -86,13 +95,18 @@ void createTetr(int constructId) {
 		if (piece != 0)
 			tetr->addPiece(0, colIndex);
 		if (bottomPiece != 0)
+		{
 			tetr->addPiece(1, colIndex);
+			lanes = 2;
+		}
 
 		if (piece != 0 || bottomPiece != 0)
 			colIndex++;
 
 	}
-	tetr->rect.x = (800 / 2) - 24;
+	tetr->rect.w = colIndex * 16;
+	tetr->rect.h = lanes * 16;
+	tetr->rect.x = boardX + (16 * 3);
 	tetr->rect.y = 192;
 	tetr->storeY = 192;
 	faillingTetr = tetr;
@@ -117,6 +131,7 @@ void toClipboard(const std::string& s) {
 float currentTime = 0;
 float simulatedTime = 0;
 
+
 int level;
 
 float align(float value, float size)
@@ -125,11 +140,90 @@ float align(float value, float size)
 }
 
 
+void checkBoardCol() {
+	for (TetrominoPiece piece : faillingTetr->pieces)
+	{
+		if (faillingTetr->rect.x + piece.rect.x < boardX)
+			faillingTetr->rect.x += 16;
+		if (faillingTetr->rect.x + piece.rect.x >= boardX + 160)
+			faillingTetr->rect.x -= 16;
+	}
+
+}
+
+int findLaneOfPiece(int pieceY) {
+	int lane = pieceY - 192;
+	for (int i = 0; i < 21; i++)
+	{
+		int laneMay = i * 16;
+		if (lane == laneMay)
+			return i;
+	}
+}
+
+Tetromino* lowestPos() {
+	Tetromino* copy = new Tetromino();
+	copy->pieces = faillingTetr->pieces;
+	copy->rect = faillingTetr->rect;
+	bool landed = false;
+
+	
+
+	while (!landed)
+	{
+		copy->rect.y += 16;
+
+		TetrominoPiece lowestPiece = copy->pieces[0];
+
+		for (TetrominoPiece p : copy->pieces)
+		{
+			if (p.rect.y > lowestPiece.rect.y)
+				lowestPiece = p;
+			for (TetrominoPiece pp : groundedPieces[findLaneOfPiece(copy->rect.y + p.rect.y)])
+			{
+				if (copy->checkCol(pp))
+				{
+					landed = true;
+					break;
+				}
+			}
+			if (landed)
+				break;
+		}
+
+		
+		if (copy->rect.y + lowestPiece.rect.y >= bottomBoard && !landed)
+		{
+			landed = true;
+			copy->rect.y -= lowestPiece.rect.y;
+		}
+	}
+	return copy;
+}
+
+void placePiece()
+{
+	for (TetrominoPiece piece : faillingTetr->pieces)
+	{
+		piece.rect.x = faillingTetr->rect.x + piece.rect.x;
+		piece.rect.y = faillingTetr->rect.y + piece.rect.y;
+
+		int lane = piece.rect.y - 192;
+		for (int i = 0; i < 21; i++)
+		{
+			int laneMay = i * 16;
+			if (lane == laneMay)
+				groundedPieces[i].push_back(piece);
+		}
+	}
+}
+
 int WinMain(HINSTANCE hInstance,
 	HINSTANCE hPrevInstance,
 	PSTR lpCmdLine,
 	INT nCmdShow)
 {
+	srand((unsigned)time(0));
 	SDL_Init(SDL_INIT_EVERYTHING);
 	TTF_Init();
 
@@ -137,7 +231,7 @@ int WinMain(HINSTANCE hInstance,
 
 
 	SDL_Window* window = SDL_CreateWindow("Da window", SDL_WINDOWPOS_UNDEFINED,
-		SDL_WINDOWPOS_UNDEFINED, 800, 600, SDL_WINDOW_SHOWN);
+		SDL_WINDOWPOS_UNDEFINED, 864, 672, SDL_WINDOW_SHOWN);
 
 	SDL_Renderer* renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
 
@@ -147,45 +241,74 @@ int WinMain(HINSTANCE hInstance,
 
 	bool run = true;
 
-	createTetr(2);
+	createTetr(rand() % 6);
+
+	bool skip = false;
 	
 	while (run)
 	{
 		const Uint32 startTime = SDL_GetTicks();
 		SDL_RenderClear(renderer);
 		SDL_Event event;
+
+
 		while (SDL_PollEvent(&event) > 0)
 		{
 			switch (event.type) {
-			case SDL_QUIT:
-				run = false;
-				break;
-			case SDL_KEYDOWN:
-				std::string clip = "";
-				switch (event.key.keysym.sym)
-				{
-				case SDLK_UP:
-					if (faillingTetr)
-						faillingTetr->rotate();
+				case SDL_QUIT:
+					run = false;
 					break;
-				case SDLK_LEFT:
-					if (faillingTetr)
+				case SDL_KEYDOWN:
+					switch (event.key.keysym.sym)
 					{
-						faillingTetr->rect.x -= 16;
-						if (faillingTetr->rect.x < ((800 / 2) - 80))
-							faillingTetr->rect.x = ((800 / 2) - 80);
-					}
-					break;
-				case SDLK_RIGHT:
-					if (faillingTetr)
-					{
-						faillingTetr->rect.x += 16;
-						if (faillingTetr->rect.x + faillingTetr->rect.w >= ((800 / 2) - 80) + 160)
+					case SDLK_UP:
+						if (faillingTetr)
+						{
+							faillingTetr->rotate();
+							checkBoardCol();
+						}
+						break;
+					case SDLK_LEFT:
+						if (faillingTetr)
+						{
 							faillingTetr->rect.x -= 16;
+							checkBoardCol();
+						}
+						break;
+					case SDLK_RIGHT:
+						if (faillingTetr)
+						{
+							faillingTetr->rect.x += 16;
+							checkBoardCol();
+						}
+						break;
+					case SDLK_DOWN:
+						skip = true;
+						break;
+					case SDLK_SPACE:
+						Tetromino* lowestPiece = lowestPos();
+
+						faillingTetr->rect.y = lowestPiece->rect.y;
+
+						delete lowestPiece;
+
+						placePiece();
+
+						delete faillingTetr;
+						faillingTetr = nullptr;
+						break;
 					}
-				}
-				break;
+					break;
+				case SDL_KEYUP:
+					switch (event.key.keysym.sym)
+					{
+					case SDLK_DOWN:
+						skip = false;
+						break;
+					}
+					break;
 			}
+		
 
 		}
 
@@ -194,12 +317,19 @@ int WinMain(HINSTANCE hInstance,
 
 		if (faillingTetr)
 		{
+			if (!skip)
 			while (currentTime > simulatedTime)
 			{
 				faillingTetr->storeY++;
 				faillingTetr->rect.y = align(faillingTetr->storeY, 16);
 
 				simulatedTime += 1 / cellFrames[level][0];
+			}
+
+			if (skip && SDL_GetTicks() % 10 == 0)
+			{
+				faillingTetr->storeY++;
+				faillingTetr->rect.y = align(faillingTetr->storeY, 16);
 			}
 
 			// collision
@@ -217,37 +347,23 @@ int WinMain(HINSTANCE hInstance,
 							piece.rect.x = faillingTetr->rect.x + piece.rect.x;
 							piece.rect.y = faillingTetr->rect.y + piece.rect.y;
 
-							int lane = piece.rect.y - 192;
-							for (int i = 0; i < 21; i++)
-							{
-								int laneMay = i * 16;
-								if (lane == laneMay)
-									groundedPieces[i].push_back(piece);
-							}
+							groundedPieces[findLaneOfPiece(piece.rect.y)].push_back(piece);
 						}
 						die = true;
 					}
 				}
 			}
 
-			if (faillingTetr->rect.y + faillingTetr->rect.h >= 480)
+
+			for (TetrominoPiece piece : faillingTetr->pieces)
 			{
-				faillingTetr->rect.y = 480;
-				for (TetrominoPiece piece : faillingTetr->pieces)
+				if (faillingTetr->rect.y + piece.rect.y >= bottomBoard - 16)
 				{
-					piece.rect.x = faillingTetr->rect.x + piece.rect.x;
-					piece.rect.y = faillingTetr->rect.y + piece.rect.y;
-
-					int lane = piece.rect.y - 192;
-					for (int i = 0; i < 21; i++)
-					{
-						int laneMay = i * 16;
-						if (lane == laneMay)
-							groundedPieces[i].push_back(piece);
-					}
+					placePiece();
+					faillingTetr->rect.y = bottomBoard - 16;
+					die = true;
+					break;
 				}
-				die = true;
-
 			}
 
 			if (die)
@@ -259,6 +375,10 @@ int WinMain(HINSTANCE hInstance,
 			if (faillingTetr)
 				faillingTetr->draw();
 
+		}
+		else
+		{
+			createTetr(rand() % 6);
 		}
 
 		for (int i = 0; i < 21; i++)
@@ -282,13 +402,13 @@ int WinMain(HINSTANCE hInstance,
 
 		SDL_FPoint p[4];
 
-		p[0].x = ((800 / 2) - 80);
+		p[0].x = boardX;
 		p[0].y = 192;
-		p[1].x = ((800 / 2) - 80);
-		p[1].y = 512;
-		p[2].x = ((800 / 2) - 80) + 160;
-		p[2].y = 512;
-		p[3].x = ((800 / 2) - 80) + 160;
+		p[1].x = boardX;
+		p[1].y = bottomBoard;
+		p[2].x = boardX + 160;
+		p[2].y = bottomBoard;
+		p[3].x = boardX + 160;
 		p[3].y = 192;
 
 		SDL_RenderDrawLinesF(renderer, p, 4);
